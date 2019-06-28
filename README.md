@@ -1,6 +1,6 @@
-# pubnub
+# Pubnub Flutter
 
-A new flutter plugin project.
+A Flutter Dart Plugin to work with Pubnub in Android
 
 ## Getting Started
 
