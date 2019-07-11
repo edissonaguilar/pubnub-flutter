@@ -1,6 +1,9 @@
 package cultivandofuturo.com.pubnub;
 
 import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
+import android.app.Activity;
 
 import com.pubnub.api.PNConfiguration;
 import com.pubnub.api.PubNub;
@@ -26,6 +29,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import cultivandofuturo.com.pubnub.util.DateTimeUtil;
+import cultivandofuturo.com.pubnub.helpers.MainThreadResult;
+import cultivandofuturo.com.pubnub.helpers.MainThreadEventSink;
+
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
@@ -36,30 +42,30 @@ import io.flutter.plugin.common.PluginRegistry.Registrar;
 public class PubnubPlugin implements MethodCallHandler {
 
   private PubNub pubnub;
-	private String channelName = "test";
-	private static EventChannel.EventSink messageSender;
+  private String channelName = "test";
+  
+  private static EventChannel.EventSink messageSender;
 	private static EventChannel.EventSink statusSender;
   private String uuid = "";
-  
+  private final Activity activity;
+
   public static void registerWith(Registrar registrar) {
 
-    PubnubPlugin plugin = new PubnubPlugin();
+    MethodChannel channel = new MethodChannel(registrar.messenger(), "pubnub");
+    channel.setMethodCallHandler(new PubnubPlugin(registrar.activity()));
 
-    final MethodChannel channel = new MethodChannel(registrar.messenger(), "pubnub");
-    channel.setMethodCallHandler(plugin);
-
-    final EventChannel messageChannel = new EventChannel(registrar.messenger(),"messageStream");
+    EventChannel messageChannel = new EventChannel(registrar.messenger(),"plugins.flutter.io/message_status");
 
     messageChannel.setStreamHandler(new EventChannel.StreamHandler(){
 			@Override
-			public void onListen(Object arguments, EventChannel.EventSink events){
-				messageSender = events;
+			public void onListen(Object arguments, EventChannel.EventSink eventSink){
+        System.out.println( "messageSender.onListen");
+        messageSender = eventSink;
 			}
 
 			@Override
-			public void onCancel(Object arguments)
-			{
-				Log.d(getClass().getName(), "messageChannel.onCancel");
+			public void onCancel(Object arguments){
+				System.out.println( "messageChannel.onCancel");
 			}
     });
     
@@ -68,15 +74,19 @@ public class PubnubPlugin implements MethodCallHandler {
     statusChannel.setStreamHandler(new EventChannel.StreamHandler(){
 
 			@Override public void onListen(Object o, EventChannel.EventSink eventSink){
-				Log.d(getClass().getName(), "statusChannel.onListen");
+				// System.out.println( "statusChannel.onListen");
 				statusSender = eventSink;
 			}
 
 			@Override public void onCancel(Object o){
-				Log.d(getClass().getName(), "statusChannel.onCancel");
+				System.out.println( "statusChannel.onCancel");
 			}
 		});
 
+  }
+
+  private PubnubPlugin(Activity activity) {
+    this.activity = activity;
   }
 
   @Override
@@ -110,7 +120,7 @@ public class PubnubPlugin implements MethodCallHandler {
     // uuid = java.util.UUID.randomUUID().toString();
     uuid = "cultivando-futuro-app";
   
-    Log.d(getClass().getName(), "Create pubnub with publishKey " + publishKey + ", subscribeKey " + subscribeKey + " uuid" + uuid);
+    System.out.println( "Create pubnub with publishKey " + publishKey + ", subscribeKey " + subscribeKey + " uuid" + uuid);
   
     if ((publishKey != null && !publishKey.isEmpty()) && (subscribeKey != null && !subscribeKey.isEmpty())){
 
@@ -123,13 +133,26 @@ public class PubnubPlugin implements MethodCallHandler {
       pnConfiguration.setLogVerbosity(PNLogVerbosity.BODY);
   
       pubnub = new PubNub(pnConfiguration);
-      Log.d(getClass().getName(), "PubNub configuration created");
+      System.out.println( "PubNub configuration created");
       result.success("PubNub configuration created");
     }
     else{
-      Log.d(getClass().getName(), "Keys should not be null");
+      System.out.println( "Keys should not be null");
       result.success("Keys should not be null");
     }
+  }
+
+  private void sendStream(final String data,final EventChannel.EventSink sender){
+
+    System.out.println(sender);
+
+    activity.runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        sender.success(data);
+      }
+    });
+
   }
   
   private void subscribeToChannel(MethodCall call, final Result result){
@@ -137,7 +160,7 @@ public class PubnubPlugin implements MethodCallHandler {
     /* Subscribe to the demo_tutorial channel */
     channelName = call.argument("channelName");
   
-    Log.d(getClass().getName(), "Attempt to Subscribe to channel: " + channelName);
+    System.out.println( "Attempt to Subscribe to channel: " + channelName);
   
     try{
   
@@ -146,12 +169,12 @@ public class PubnubPlugin implements MethodCallHandler {
         @Override public void status(PubNub pubnub, PNStatus status){
   
           if (status.getCategory() == PNStatusCategory.PNConnectedCategory){
-            Log.d(getClass().getName(), "Subscription was successful at channel " + channelName);
+            System.out.println( "Subscription was successful at channel " + channelName);
             statusSender.success("Subscription was successful at channel " + channelName);
             result.success(true);
           }else{
-            Log.d(getClass().getName(), "Subscription failed at channe l" + channelName);
-            Log.d(getClass().getName(), status.getErrorData().getInformation());
+            System.out.println( "Subscription failed at channe l" + channelName);
+            System.out.println( status.getErrorData().getInformation());
             statusSender.success("Subscription failed at channel " + channelName + "'\n" + status.getErrorData().getInformation());
             result.success(false);
           }
@@ -160,24 +183,27 @@ public class PubnubPlugin implements MethodCallHandler {
         @Override 
         public void message(PubNub pubnub, PNMessageResult message){
 
+          System.out.println( "Pubnub: message " + message.getMessage());
+
           try {
-            if(messageSender!=null){
+            
+            String dataString = message.getMessage().toString();
 
-              String dataString=message.getMessage().toString();
+            System.out.println(messageSender);
 
-              messageSender.success(dataString);
+            sendStream(dataString,statusSender);
 
-            }
           } catch (Exception e) {
-            messageSender.success("Failed to parse message");
-            e.printStackTrace();
+            statusSender.success("Failed to parse message");
+            System.out.println(e);
+            // e.printStackTrace();
           }
 
         }
   
         @Override public void presence(PubNub pubnub, PNPresenceEventResult presence)
         {
-          Log.d(getClass().getName(), "Presence: getChannel " + presence.getChannel() + "getEvent " + presence.getEvent() + "getSubscription " + presence.getSubscription() + "getUuid " + presence.getUuid());
+          System.out.println( "Presence: getChannel " + presence.getChannel() + "getEvent " + presence.getEvent() + "getSubscription " + presence.getSubscription() + "getUuid " + presence.getUuid());
         }
       });
   
@@ -186,7 +212,7 @@ public class PubnubPlugin implements MethodCallHandler {
     }
     catch (Exception e){
   
-      Log.d(getClass().getName(), e.getMessage());
+      System.out.println( e.getMessage());
       result.success(false);
   
     }

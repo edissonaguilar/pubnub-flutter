@@ -8,7 +8,7 @@ class Pubnub {
   static var statusReceived;
 
   static const MethodChannel channelPubNub  = const MethodChannel('pubnub');
-  static const EventChannel messageChannel = const EventChannel('messageStream');
+  static const messageChannel = const EventChannel('plugins.flutter.io/message_status');
   static const EventChannel statusChannel = const EventChannel('plugins.flutter.io/pubnub_status');
 
   Pubnub(String publishKey, String subscribeKey, String secretKey) {
@@ -71,11 +71,13 @@ class Pubnub {
 
   Stream<dynamic> get onMessageReceived {
 
-    if (messageReceived == null) {
+    // if (messageReceived == null) {
       messageReceived = messageChannel
         .receiveBroadcastStream()
-        .map((dynamic event) => _parseMessage(event));
-    }
+        .map((dynamic event){
+          print(event);
+        });
+    // }
     return messageReceived;
 
   }

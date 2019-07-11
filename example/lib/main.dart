@@ -32,12 +32,12 @@ class _MyAppState extends State<MyApp> {
       });
     });
 
-    pubnub.onMessageReceived.listen((message) {
-      print(message);
-      setState(() {
-        receivedMessage = message['text'];
-      });
-    });
+    // pubnub.onMessageReceived.listen((message) {
+    //   print(message);
+    //   setState(() {
+    //     receivedMessage = message['text'];
+    //   });
+    // });
   }
 
   @override
@@ -84,26 +84,24 @@ class _MyAppState extends State<MyApp> {
                       color: Colors.black12,
                       onPressed: () {
                         pubnub.subscribe(
-                            "cf-channel-78883642-7646-401d-82e8-08aa64a76887");
+                            "cf-channel-20a32390-a718-416a-aaf8-b929301ac22d");
                       },
                       child: Text("Subscribe"))
                 ]),
             FlatButton(
                 color: Colors.black12,
                 onPressed: () async {
-                  var data = await pubnub.history({
-                    "channel":
-                        "cf-channel-78883642-7646-401d-82e8-08aa64a76887",
-                    "count": 5
-                  });
+                  // var data = await pubnub.history({
+                  //   "channel":
+                  //       "cf-channel-20a32390-a718-416a-aaf8-b929301ac22d",
+                  //   "count": 5
+                  // });
 
-                  // print(data);
+                  // var json= jsonDecode(data);
 
-                  var json= jsonDecode(data);
+                  // print(json);
 
-                  print(json.runtimeType);
-
-                  // var data =await pubnub.sendMessage(sendMessage,'Edisson Flutter',0);
+                  pubnub.sendMessage(sendMessage,'Edisson Flutter',0);
                 },
                 child: Text("Send Message")),
           ],
