@@ -39,7 +39,7 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 
-public class PubnubPlugin implements MethodCallHandler {
+public class PubnubPlugin implements MethodCallHandler, EventChannel.StreamHandler {
 
   private PubNub pubnub;
   private String channelName = "test";
@@ -54,18 +54,7 @@ public class PubnubPlugin implements MethodCallHandler {
     channel.setMethodCallHandler(new PubnubPlugin(registrar.activity()));
 
     EventChannel statusChannel = new EventChannel(registrar.messenger(), "plugins.flutter.io/pubnub_status");
-
-    statusChannel.setStreamHandler(new EventChannel.StreamHandler(){
-
-			@Override public void onListen(Object o, EventChannel.EventSink eventSink){
-				System.out.println( "statusSender.onListen");
-				statusSender = eventSink;
-			}
-
-			@Override public void onCancel(Object o){
-				System.out.println( "statusSender.onCancel");
-			}
-		});
+    statusChannel.setStreamHandler(new PubnubPlugin(registrar.activity()));
 
   }
 
@@ -93,6 +82,17 @@ public class PubnubPlugin implements MethodCallHandler {
 				result.notImplemented();
     }
     
+  }
+
+  @Override
+  public void onListen(Object o, EventChannel.EventSink eventSink){
+    System.out.println( "statusSender.onListen");
+    statusSender = eventSink;
+  }
+
+  @Override
+  public void onCancel(Object o){
+    System.out.println( "statusSender.onCancel");
   }
 
   private void createChannel(MethodCall call, Result result){
