@@ -44,7 +44,6 @@ public class PubnubPlugin implements MethodCallHandler {
   private PubNub pubnub;
   private String channelName = "test";
   
-  private static EventChannel.EventSink messageSender;
 	private static EventChannel.EventSink statusSender;
   private String uuid = "";
   private final Activity activity;
@@ -54,32 +53,17 @@ public class PubnubPlugin implements MethodCallHandler {
     MethodChannel channel = new MethodChannel(registrar.messenger(), "pubnub");
     channel.setMethodCallHandler(new PubnubPlugin(registrar.activity()));
 
-    EventChannel messageChannel = new EventChannel(registrar.messenger(),"plugins.flutter.io/message_status");
-
-    messageChannel.setStreamHandler(new EventChannel.StreamHandler(){
-			@Override
-			public void onListen(Object arguments, EventChannel.EventSink eventSink){
-        System.out.println( "messageSender.onListen");
-        messageSender = eventSink;
-			}
-
-			@Override
-			public void onCancel(Object arguments){
-				System.out.println( "messageChannel.onCancel");
-			}
-    });
-    
     EventChannel statusChannel = new EventChannel(registrar.messenger(), "plugins.flutter.io/pubnub_status");
 
     statusChannel.setStreamHandler(new EventChannel.StreamHandler(){
 
 			@Override public void onListen(Object o, EventChannel.EventSink eventSink){
-				// System.out.println( "statusChannel.onListen");
+				System.out.println( "statusSender.onListen");
 				statusSender = eventSink;
 			}
 
 			@Override public void onCancel(Object o){
-				System.out.println( "statusChannel.onCancel");
+				System.out.println( "statusSender.onCancel");
 			}
 		});
 
@@ -142,9 +126,7 @@ public class PubnubPlugin implements MethodCallHandler {
     }
   }
 
-  private void sendStream(final String data,final EventChannel.EventSink sender){
-
-    System.out.println(sender);
+  private void sendStream(final HashMap<String, String> data,final EventChannel.EventSink sender){
 
     activity.runOnUiThread(new Runnable() {
       @Override
@@ -170,8 +152,13 @@ public class PubnubPlugin implements MethodCallHandler {
   
           if (status.getCategory() == PNStatusCategory.PNConnectedCategory){
             System.out.println( "Subscription was successful at channel " + channelName);
-            statusSender.success("Subscription was successful at channel " + channelName);
-            result.success(true);
+
+            HashMap<String, String> map = new HashMap<>(); 
+
+            map.put("type","status");
+            map.put("data","Subscription was successful at channel " + channelName);
+
+            statusSender.success(map);
           }else{
             System.out.println( "Subscription failed at channe l" + channelName);
             System.out.println( status.getErrorData().getInformation());
@@ -189,14 +176,16 @@ public class PubnubPlugin implements MethodCallHandler {
             
             String dataString = message.getMessage().toString();
 
-            System.out.println(messageSender);
+            HashMap<String, String> map = new HashMap<>(); 
 
-            sendStream(dataString,statusSender);
+            map.put("type","message");
+            map.put("data",dataString);
+
+            sendStream(map,statusSender);
 
           } catch (Exception e) {
-            statusSender.success("Failed to parse message");
             System.out.println(e);
-            // e.printStackTrace();
+            e.printStackTrace();
           }
 
         }

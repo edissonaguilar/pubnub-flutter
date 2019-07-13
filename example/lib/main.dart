@@ -26,18 +26,23 @@ class _MyAppState extends State<MyApp> {
         "sub-c-6eb2ddbe-5197-11e9-a1ab-dae925867aca",
         "sec-c-YjUwNDkxYzktMmIyMy00NmZmLWI3NjctMWZhYTU2YzBmOWZi");
 
-    pubnub.onStatusReceived.listen((status) {
+    pubnub.onStatusReceived.listen((data) {
+      
+      var type = data['type'];
+      var payload = data['data'];
+
+      print(type);
+
+      if(type=="message"){
+        print(json.decode(payload));
+      }
+
       setState(() {
-        receivedStatus = status;
+        receivedStatus = payload;
       });
+
     });
 
-    // pubnub.onMessageReceived.listen((message) {
-    //   print(message);
-    //   setState(() {
-    //     receivedMessage = message['text'];
-    //   });
-    // });
   }
 
   @override
